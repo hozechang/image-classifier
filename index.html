@@ -3,430 +3,279 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>图像分类推理平台</title>
+<title>农作物病害识别平台</title>
 <style>
-  :root {
-    --bg: #f8fafc; --card: #fff; --text: #1e293b; --text2: #64748b;
-    --accent: #2563eb; --accent2: #3b82f6; --border: #e2e8f0;
-    --success: #16a34a; --warn: #d97706; --radius: 12px;
-  }
-  .dark {
-    --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --text2: #94a3b8;
-    --border: #334155;
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
-    background: var(--bg); color: var(--text); line-height: 1.7; min-height: 100vh;
-  }
-  .container { max-width: 960px; margin: 0 auto; padding: 40px 20px; }
+  :root {--bg:#f8fafc;--card:#fff;--text:#1e293b;--text2:#64748b;--accent:#16a34a;--accent2:#22c55e;--border:#e2e8f0;--radius:14px;}
+  .dark {--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);line-height:1.7;min-height:100vh}
+  .container{max-width:960px;margin:0 auto;padding:32px 16px}
+  h1{font-size:1.8rem;text-align:center;margin-bottom:4px}
+  .subtitle{text-align:center;color:var(--text2);margin-bottom:32px;font-size:.9rem}
 
-  h1 { font-size: 2rem; text-align: center; margin-bottom: 8px; }
-  .subtitle { text-align: center; color: var(--text2); margin-bottom: 40px; font-size: .95rem; }
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:768px){.grid{grid-template-columns:1fr}}
 
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px}
+  .card h2{font-size:1.1rem;margin-bottom:16px;display:flex;align-items:center;gap:8px}
 
-  .card {
-    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 24px;
-  }
-  .card h2 { font-size: 1.15rem; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+  .form-g{margin-bottom:14px}
+  .form-g label{display:block;font-size:.82rem;font-weight:600;margin-bottom:5px;color:var(--text2)}
+  .form-g input[type=file]{width:100%;padding:10px 12px;border:1px dashed var(--border);border-radius:8px;font-size:.88rem;cursor:pointer;background:var(--bg);color:var(--text)}
+  .form-g input[type=file]:hover{border-color:var(--accent)}
 
-  .form-group { margin-bottom: 16px; }
-  .form-group label {
-    display: block; font-size: .85rem; font-weight: 600; margin-bottom: 6px; color: var(--text2);
-  }
-  .form-group select, .form-group input[type="file"] {
-    width: 100%; padding: 10px 12px; border: 1px solid var(--border);
-    border-radius: 8px; font-size: .9rem; background: var(--bg); color: var(--text);
-    cursor: pointer;
-  }
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:12px 24px;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .2s}
+  .btn-primary{background:var(--accent);color:#fff;width:100%;justify-content:center}
+  .btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .btn-sm{padding:8px 18px;font-size:.85rem;width:auto;margin-top:8px}
 
-  .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 12px 28px; border: none; border-radius: 8px;
-    font-size: 1rem; font-weight: 600; cursor: pointer;
-    transition: all .2s;
-  }
-  .btn-primary { background: var(--accent); color: #fff; width: 100%; justify-content: center; }
-  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
-  .btn-primary:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+  #preview{width:100%;max-height:280px;object-fit:contain;border-radius:8px;border:2px dashed var(--border);margin-top:8px;display:none}
+  #preview.show{display:block}
 
-  #imagePreview {
-    width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px;
-    border: 2px dashed var(--border); margin-top: 8px; display: none;
-  }
-  #imagePreview.show { display: block; }
+  .cam-btn{width:100%;padding:10px;border:2px dashed var(--border);border-radius:8px;background:var(--bg);color:var(--text2);font-size:.88rem;cursor:pointer;text-align:center;margin-top:8px}
+  .cam-btn:hover{border-color:var(--accent);color:var(--accent)}
 
-  .camera-btn {
-    width: 100%; padding: 10px; border: 2px dashed var(--border); border-radius: 8px;
-    background: var(--bg); color: var(--text2); font-size: .9rem; cursor: pointer;
-    text-align: center; margin-top: 8px; transition: all .2s;
-  }
-  .camera-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #result{grid-column:1/-1;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;display:none}
+  #result.show{display:block}
+  .r-item{margin-bottom:18px}
+  .r-label{font-size:1.05rem;font-weight:700;margin-bottom:4px}
+  .r-bar-wrap{height:34px;background:var(--bg);border-radius:8px;overflow:hidden}
+  .r-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:8px;display:flex;align-items:center;padding-left:12px;color:#fff;font-weight:600;font-size:.85rem;transition:width .6s ease;min-width:48px}
+  .r-note{font-size:.85rem;color:var(--text2);margin-top:14px;padding:12px;background:var(--bg);border-radius:8px}
 
-  /* Camera modal */
-  .modal-overlay {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.8);
-    z-index: 100; justify-content: center; align-items: center;
-  }
-  .modal-overlay.active { display: flex; }
-  .modal-box {
-    background: var(--card); border-radius: var(--radius); padding: 24px;
-    max-width: 640px; width: 95%; text-align: center;
-  }
-  .modal-box video { width: 100%; border-radius: 8px; margin-bottom: 16px; }
-  .modal-box canvas { display: none; }
-  .modal-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-  .modal-actions .btn { width: auto; }
-  .btn-secondary { background: var(--border); color: var(--text); }
-  .btn-danger { background: #ef4444; color: #fff; }
+  .status{text-align:center;font-size:.82rem;color:var(--text2);min-height:22px;margin-top:8px}
 
-  /* Results */
-  #result {
-    grid-column: 1 / -1;
-    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 24px; display: none;
-  }
-  #result.show { display: block; }
-  .result-item { margin-bottom: 16px; }
-  .result-label { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
-  .result-bar-wrap {
-    height: 32px; background: var(--bg); border-radius: 6px; overflow: hidden;
-    position: relative;
-  }
-  .result-bar {
-    height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 6px; transition: width .5s ease;
-    display: flex; align-items: center; padding-left: 12px;
-    color: #fff; font-weight: 600; font-size: .85rem;
-  }
-  .result-note { font-size: .85rem; color: var(--text2); margin-top: 12px; padding: 12px;
-    background: var(--bg); border-radius: 6px; }
+  footer{text-align:center;padding:24px;color:var(--text2);font-size:.78rem;border-top:1px solid var(--border);margin-top:40px}
+  .theme-btn{position:fixed;top:12px;right:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;color:var(--text);z-index:10;font-size:.82rem}
 
-  .spinner {
-    display: none; width: 24px; height: 24px; border: 3px solid var(--border);
-    border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite;
-  }
-  .spinner.active { display: inline-block; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;justify-content:center;align-items:center}
+  .modal-overlay.on{display:flex}
+  .modal-box{background:var(--card);border-radius:var(--radius);padding:20px;max-width:600px;width:95%;text-align:center}
+  .modal-box video{width:100%;border-radius:8px;margin-bottom:12px}
+  .modal-box canvas{display:none}
+  .modal-actions{display:flex;gap:10px;justify-content:center}
 
-  .status { text-align: center; color: var(--text2); font-size: .85rem; min-height: 24px; margin-top: 8px; }
-
-  footer { text-align: center; padding: 24px; color: var(--text2); font-size: .8rem; }
-  footer a { color: var(--accent); }
-  .theme-btn {
-    position: fixed; top: 16px; right: 16px; background: var(--card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 6px 12px; cursor: pointer; color: var(--text); z-index: 10;
-  }
-
-  .info-box { font-size: .82rem; color: var(--text2); background: var(--bg); padding: 12px; border-radius: 6px; margin-top: 8px; }
-  .info-box code { background: var(--border); padding: 1px 6px; border-radius: 4px; font-size: .8rem; }
+  .info-box{font-size:.8rem;color:var(--text2);background:var(--bg);padding:10px;border-radius:6px;margin-top:8px}
+  .badge{display:inline-block;background:#dcfce7;color:#166534;padding:2px 10px;border-radius:12px;font-size:.75rem;font-weight:600}
+  .dark .badge{background:#14532d;color:#bbf7d0}
 </style>
 </head>
 <body>
 <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">暗黑</button>
 
 <div class="container">
-  <h1>图像分类推理平台</h1>
-  <p class="subtitle">上传 ONNX 模型 + 图片 → Top-2 预测 · 支持摄像头拍照 · 浏览器本地推理</p>
+  <h1>农作物病害智能识别</h1>
+  <p class="subtitle">上传 ONNX 模型 + 叶片图片 → Top-2 病害诊断 · 支持拍照</p>
 
   <div class="grid">
-    <!-- Model config -->
-    <div class="card" id="modelCard">
-      <h2>模型配置</h2>
-      <div class="form-group">
-        <label>上传 ONNX 模型文件</label>
+    <div class="card">
+      <h2>模型加载</h2>
+      <div class="form-g">
+        <label>上传 ONNX 模型文件（.pth 需先用下方脚本转换）</label>
         <input type="file" id="modelFile" accept=".onnx">
       </div>
-      <div class="form-group">
-        <label>上传标签文件（可选，txt 每行一个标签。默认用占位标签）</label>
-        <input type="file" id="labelsFile" accept=".txt">
-      </div>
       <div class="info-box">
-        <strong>没有 ONNX 模型？</strong><br>
-        用下方 Python 脚本把 <code>.pth</code> 转为 <code>.onnx</code> 格式
+        <span class="badge">38类</span> 已内置标签，自动匹配，无需手动上传标签文件
       </div>
-      <button class="btn btn-primary" onclick="loadModel()" id="loadBtn">
-         加载模型
-      </button>
-      <div class="status" id="modelStatus"></div>
+      <button class="btn btn-primary" onclick="loadModel()" id="loadBtn">加载模型</button>
+      <div class="status" id="mdlStatus"></div>
     </div>
 
-    <!-- Image input -->
     <div class="card">
-      <h2>图片输入</h2>
-      <div class="form-group">
+      <h2>叶片图片</h2>
+      <div class="form-g">
         <label>上传图片</label>
-        <input type="file" id="imageFile" accept="image/*">
+        <input type="file" id="imgFile" accept="image/*">
       </div>
-      <img id="imagePreview" alt="Preview">
-      <button class="camera-btn" onclick="openCamera()"> 打开摄像头拍照</button>
-      <button class="btn btn-primary" onclick="runInference()" id="inferBtn" disabled style="margin-top:16px">
-         开始推理
-      </button>
-      <div class="status" id="inferStatus"></div>
+      <img id="preview" alt="预览">
+      <button class="cam-btn" onclick="openCam()">打开摄像头拍照</button>
+      <button class="btn btn-primary" onclick="runInfer()" id="inferBtn" disabled style="margin-top:12px">开始识别</button>
+      <div class="status" id="infStatus"></div>
     </div>
 
-    <!-- Results -->
     <div id="result">
-      <h2>预测结果</h2>
-      <div id="resultContent"></div>
+      <h2>识别结果</h2>
+      <div id="resContent"></div>
     </div>
   </div>
 
-  <!-- Converter Info -->
-  <div class="card" style="margin-top:24px">
-    <h2> .pth → ONNX 转换脚本</h2>
-    <p style="color:var(--text2);font-size:.9rem;margin-bottom:12px">
-      如果你的模型是 PyTorch <code>.pth</code> 格式，运行下面的 Python 脚本将其转为 ONNX 格式：
+  <div class="card" style="margin-top:20px">
+    <h2>.pth → ONNX 模型转换</h2>
+    <p style="font-size:.88rem;color:var(--text2);margin-bottom:10px">
+      浏览器无法直接加载 .pth 文件，需先转换为 ONNX 格式。在项目目录下运行：
     </p>
-    <pre style="background:var(--bg);padding:16px;border-radius:8px;overflow-x:auto;font-size:.8rem;line-height:1.6">
-python convert_to_onnx.py --arch resnet50 --num_classes 1000 --weights model.pth --output model.onnx</pre>
-    <p style="color:var(--text2);font-size:.82rem;margin-top:8px">
-      支持的架构: resnet18, resnet34, resnet50, resnet101, vgg16, vgg19, mobilenet_v2, mobilenet_v3_small, mobilenet_v3_large, efficientnet_b0, densenet121, alexnet, squeezenet1_0
+    <pre style="background:var(--bg);padding:14px;border-radius:8px;font-size:.8rem;overflow-x:auto;line-height:1.6">cd pytorch-densenet-tiramisu-main
+python convert_model.py --checkpoint checkpoints/best.pth --output model.onnx</pre>
+    <p style="font-size:.82rem;color:var(--text2);margin-top:8px">
+      转换脚本已放在项目里（<code>convert_model.py</code>），转换完成后上传 <code>model.onnx</code> 到本页面即可。
     </p>
   </div>
 </div>
 
 <!-- Camera Modal -->
-<div class="modal-overlay" id="cameraModal">
+<div class="modal-overlay" id="camModal">
   <div class="modal-box">
-    <h2 style="margin-bottom:16px">拍照</h2>
-    <video id="cameraVideo" autoplay playsinline></video>
-    <canvas id="cameraCanvas"></canvas>
+    <h2 style="margin-bottom:12px">拍摄叶片</h2>
+    <video id="camVideo" autoplay playsinline></video>
+    <canvas id="camCanvas"></canvas>
     <div class="modal-actions">
-      <button class="btn btn-primary" onclick="capturePhoto()"> 拍照</button>
-      <button class="btn btn-danger" onclick="closeCamera()">关闭</button>
+      <button class="btn btn-primary" onclick="snap()">拍照</button>
+      <button class="btn" onclick="closeCam()" style="background:var(--border);color:var(--text)">关闭</button>
     </div>
   </div>
 </div>
 
-<footer>
-  <p>图像分类推理平台 · 使用 ONNX Runtime Web · 所有推理在浏览器本地完成</p>
-</footer>
+<footer>农作物病害智能识别 · ONNX Runtime Web 浏览器推理 · 38类作物病害</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
 <script>
-// ========== State ==========
-let session = null;
-let labels = [];
-let imageData = null;
-let cameraStream = null;
+// ========== 38类作物病害标签 ==========
+const LABELS_38 = [
+  "苹果-黑星病", "苹果-黑腐病", "苹果-锈病", "苹果-健康",
+  "蓝莓-健康",
+  "樱桃-健康", "樱桃-白粉病",
+  "玉米-灰斑病", "玉米-锈病", "玉米-健康", "玉米-北叶枯病",
+  "葡萄-黑腐病", "葡萄-埃斯卡病", "葡萄-健康", "葡萄-叶枯病",
+  "柑橘-黄龙病",
+  "桃子-细菌性斑点病", "桃子-健康",
+  "甜椒-细菌性斑点病", "甜椒-健康",
+  "马铃薯-早疫病", "马铃薯-健康", "马铃薯-晚疫病",
+  "覆盆子-健康",
+  "大豆-健康",
+  "南瓜-白粉病",
+  "草莓-健康", "草莓-叶焦病",
+  "番茄-细菌性斑点病", "番茄-早疫病", "番茄-健康", "番茄-晚疫病",
+  "番茄-叶霉病", "番茄-斑枯病", "番茄-红蜘蛛", "番茄-靶斑病",
+  "番茄-花叶病毒", "番茄-黄化曲叶病毒"
+];
 
-// ========== Theme ==========
-function toggleTheme() {
-  document.documentElement.classList.toggle('dark');
-  const isDark = document.documentElement.classList.contains('dark');
-  document.getElementById('themeBtn').textContent = isDark ? '明亮' : '暗黑';
-  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+let session = null, imageEl = null;
+const labels38 = LABELS_38;
+
+// Theme
+function toggleTheme(){
+  const d=document.documentElement.classList.toggle('dark');
+  document.getElementById('themeBtn').textContent=d?'明亮':'暗黑';
+  localStorage.setItem('theme',d?'dark':'light');
 }
 (function(){
-  if(localStorage.getItem('theme')==='dark' ||
-    (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme:dark)').matches)){
-    document.documentElement.classList.add('dark');
-    document.getElementById('themeBtn').textContent = '明亮';
+  if(localStorage.getItem('theme')==='dark'||(!localStorage.getItem('theme')&&matchMedia('(prefers-color-scheme:dark)').matches)){
+    document.documentElement.classList.add('dark');document.getElementById('themeBtn').textContent='明亮';
   }
 })();
 
-// ========== Image Preview ==========
-document.getElementById('imageFile').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(ev) {
-    const img = document.getElementById('imagePreview');
-    img.src = ev.target.result;
-    img.classList.add('show');
-    imageData = img;
-  };
-  reader.readAsDataURL(file);
+// Image preview
+document.getElementById('imgFile').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=function(ev){const img=document.getElementById('preview');img.src=ev.target.result;img.classList.add('show');imageEl=img};
+  r.readAsDataURL(f);
 });
 
-// ========== Model Loading ==========
-async function loadModel() {
-  const modelFile = document.getElementById('modelFile').files[0];
-  const labelsFile = document.getElementById('labelsFile').files[0];
-
-  if (!modelFile) {
-    document.getElementById('modelStatus').textContent = '请先选择 ONNX 模型文件';
-    return;
-  }
-
-  const status = document.getElementById('modelStatus');
-  const btn = document.getElementById('loadBtn');
-  status.textContent = '加载中...';
-  btn.disabled = true;
-
-  try {
-    const modelBuffer = await modelFile.arrayBuffer();
-    const opts = {
-      executionProviders: ['wasm'],
-      graphOptimizationLevel: 'all',
-    };
-    session = await ort.InferenceSession.create(modelBuffer, opts);
-    status.textContent = '模型加载成功! 输入: [' +
-      session.inputNames.join(', ') + ']';
-    document.getElementById('inferBtn').disabled = false;
-  } catch(e) {
-    status.textContent = '加载失败: ' + e.message;
-  }
-  btn.disabled = false;
-
-  // Load labels
-  if (labelsFile) {
-    const text = await labelsFile.text();
-    labels = text.split(/[\r\n]+/).filter(l => l.trim());
-  } else {
-    labels = [];
-  }
+// Load ONNX model
+async function loadModel(){
+  const f=document.getElementById('modelFile').files[0];
+  if(!f){document.getElementById('mdlStatus').textContent='请选择 ONNX 模型文件';return}
+  const s=document.getElementById('mdlStatus'),b=document.getElementById('loadBtn');
+  s.textContent='加载中...';b.disabled=true;
+  try{
+    const buf=await f.arrayBuffer();
+    session=await ort.InferenceSession.create(buf,{executionProviders:['wasm'],graphOptimizationLevel:'all'});
+    s.textContent='模型加载成功! 输入: ['+session.inputNames.join(', ')+']';
+    document.getElementById('inferBtn').disabled=false;
+  }catch(e){s.textContent='加载失败: '+e.message}
+  b.disabled=false;
 }
 
-// ========== Inference ==========
-async function runInference() {
-  if (!session) { alert('请先加载模型'); return; }
-  if (!imageData) { alert('请先上传图片或拍照'); return; }
+// Inference
+async function runInfer(){
+  if(!session){alert('请先加载模型');return}
+  if(!imageEl){alert('请先上传图片或拍照');return}
+  const s=document.getElementById('infStatus'),b=document.getElementById('inferBtn'),r=document.getElementById('result');
+  s.textContent='识别中...';b.disabled=true;
+  try{
+    const tensor=await preprocess(imageEl);
+    const feeds={[session.inputNames[0]]:tensor};
+    const output=await session.run(feeds);
+    const data=output[session.outputNames[0]].data;
+    const probs=softmax(Array.from(data));
+    const top2=probs.map((p,i)=>({idx:i,prob:p})).sort((a,b)=>b.prob-a.prob).slice(0,2);
+    renderRes(top2);
+    r.classList.add('show');s.textContent='';
+  }catch(e){s.textContent='识别失败: '+e.message;console.error(e)}
+  b.disabled=false;
+}
 
-  const status = document.getElementById('inferStatus');
-  const btn = document.getElementById('inferBtn');
-  const resultDiv = document.getElementById('result');
-  status.textContent = '推理中...';
-  btn.disabled = true;
-
-  try {
-    // Preprocess: resize to 224x224, normalize with ImageNet stats
-    const inputTensor = await preprocessImage(imageData);
-
-    // Run
-    const inputName = session.inputNames[0];
-    const feeds = { [inputName]: inputTensor };
-    const results = await session.run(feeds);
-    const outputName = session.outputNames[0];
-    const output = results[outputName].data;
-
-    // Softmax
-    const probs = softmax(Array.from(output));
-
-    // Top-2
-    const indexed = probs.map((p,i) => ({idx:i, prob:p}));
-    indexed.sort((a,b) => b.prob - a.prob);
-    const top2 = indexed.slice(0, 2);
-
-    renderResults(top2);
-    resultDiv.classList.add('show');
-    status.textContent = '';
-  } catch(e) {
-    status.textContent = '推理失败: ' + e.message;
-    console.error(e);
+async function preprocess(img){
+  const c=document.createElement('canvas');c.width=224;c.height=224;
+  const ctx=c.getContext('2d');ctx.drawImage(img,0,0,224,224);
+  const d=ctx.getImageData(0,0,224,224).data;
+  const mean=[0.485,0.456,0.406],std=[0.229,0.224,0.225];
+  const t=new Float32Array(3*224*224);
+  for(let ch=0;ch<3;ch++)for(let h=0;h<224;h++)for(let w=0;w<224;w++){
+    const px=d[(h*224+w)*4+ch]/255.0;
+    t[ch*224*224+h*224+w]=(px-mean[ch])/std[ch];
   }
-  btn.disabled = false;
+  return new ort.Tensor('float32',t,[1,3,224,224]);
 }
 
-async function preprocessImage(imgElement) {
-  // Draw to canvas for resizing
-  const canvas = document.createElement('canvas');
-  canvas.width = 224;
-  canvas.height = 224;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(imgElement, 0, 0, 224, 224);
+function softmax(a){const m=Math.max(...a);const e=a.map(x=>Math.exp(x-m));const s=e.reduce((x,y)=>x+y,0);return e.map(x=>x/s)}
 
-  const imageData = ctx.getImageData(0, 0, 224, 224);
-  const { data } = imageData;
-
-  // RGB, HWC -> CHW, normalize
-  const mean = [0.485, 0.456, 0.406];
-  const std = [0.229, 0.224, 0.225];
-  const tensorData = new Float32Array(3 * 224 * 224);
-
-  for (let c = 0; c < 3; c++) {
-    for (let h = 0; h < 224; h++) {
-      for (let w = 0; w < 224; w++) {
-        const idx = (h * 224 + w) * 4 + c;
-        const pixel = data[idx] / 255.0;
-        tensorData[c * 224 * 224 + h * 224 + w] = (pixel - mean[c]) / std[c];
-      }
-    }
-  }
-
-  return new ort.Tensor('float32', tensorData, [1, 3, 224, 224]);
+function getLabel(idx,count){
+  // 自动匹配标签：如果输出38类 -> 使用植物病害标签，否则显示类序号
+  if(count===38&&idx<38)return labels38[idx];
+  return 'Class_'+idx;
 }
 
-function softmax(arr) {
-  const max = Math.max(...arr);
-  const exps = arr.map(x => Math.exp(x - max));
-  const sum = exps.reduce((a,b) => a + b, 0);
-  return exps.map(x => x / sum);
-}
-
-function renderResults(top2) {
-  const container = document.getElementById('resultContent');
-  const medals = ['', ''];
-  const colors = ['#2563eb', '#7c3aed'];
-
-  let html = '';
-  top2.forEach((item, i) => {
-    const pct = (item.prob * 100);
-    const label = labels[item.idx] || `Class_${item.idx}`;
-    html += `
-      <div class="result-item">
-        <div class="result-label">${medals[i]} ${i+1}. ${label} (Class #${item.idx})</div>
-        <div class="result-bar-wrap">
-          <div class="result-bar" style="width:${Math.max(pct, 1)}%;background:${colors[i]}">
-            ${pct.toFixed(2)}%
-          </div>
-        </div>
-      </div>`;
+function renderRes(top2){
+  const count=session?session._outputsInfo[session.outputNames[0]].dims[1]||session._outputs_info[session.outputNames[0]].dims[1]:38;
+  let h='',clrs=['#16a34a','#ca8a04'];
+  top2.forEach((item,i)=>{
+    const pct=item.prob*100;
+    const lbl=getLabel(item.idx,count);
+    const cls=i===0?'r-bar':'r-bar';
+    h+=`<div class="r-item"><div class="r-label">${i+1}. ${lbl}</div>
+    <div class="r-bar-wrap"><div class="${cls}" style="width:${Math.max(pct,1)}%;background:${clrs[i]}">${pct.toFixed(2)}%</div></div></div>`;
   });
-
-  const diff = Math.abs(top2[0].prob - top2[1].prob) * 100;
-  let note = '';
-  if (diff < 5) {
-    note = `Top-2 概率仅差 ${diff.toFixed(2)}%，结果不确定度较高`;
-  } else {
-    note = `Top-2 概率差 ${diff.toFixed(2)}%，第一名可信度较高`;
-  }
-  html += `<div class="result-note">${note}</div>`;
-  container.innerHTML = html;
+  const d=Math.abs(top2[0].prob-top2[1].prob)*100;
+  const note=d<5?`两预测仅差 ${d.toFixed(2)}%，结果不确定度较高`:`两预测差 ${d.toFixed(2)}%，第一名可信度较高`;
+  h+=`<div class="r-note">${note} &nbsp;|&nbsp; 模型输出${count}类</div>`;
+  document.getElementById('resContent').innerHTML=h;
 }
 
-// ========== Camera ==========
-async function openCamera() {
-  try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 640, height: 480, facingMode: 'environment' }
-    });
-    const video = document.getElementById('cameraVideo');
-    video.srcObject = cameraStream;
-    document.getElementById('cameraModal').classList.add('active');
-  } catch(e) {
-    alert('无法打开摄像头: ' + e.message);
-  }
+// Camera
+let camStream=null;
+async function openCam(){
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'environment'}});
+    document.getElementById('camVideo').srcObject=camStream;
+    document.getElementById('camModal').classList.add('on');
+  }catch(e){alert('无法打开摄像头: '+e.message)}
+}
+function closeCam(){if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null}document.getElementById('camModal').classList.remove('on')}
+function snap(){
+  const v=document.getElementById('camVideo'),c=document.getElementById('camCanvas');
+  c.width=v.videoWidth;c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  const img=document.getElementById('preview');img.src=c.toDataURL('image/jpeg');img.classList.add('show');imageEl=img;
+  closeCam();
 }
 
-function closeCamera() {
-  if (cameraStream) {
-    cameraStream.getTracks().forEach(t => t.stop());
-    cameraStream = null;
-  }
-  document.getElementById('cameraModal').classList.remove('active');
-}
-
-function capturePhoto() {
-  const video = document.getElementById('cameraVideo');
-  const canvas = document.getElementById('cameraCanvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-
-  const dataUrl = canvas.toDataURL('image/jpeg');
-  const img = document.getElementById('imagePreview');
-  img.src = dataUrl;
-  img.classList.add('show');
-  imageData = img;
-
-  closeCamera();
-}
+// Auto load demo model if exists
+(async function(){
+  // Try loading a pre-converted ONNX model from the same directory
+  try{
+    const r=await fetch('model.onnx');
+    if(r.ok){
+      document.getElementById('mdlStatus').textContent='发现预置模型，加载中...';
+      const buf=await r.arrayBuffer();
+      session=await ort.InferenceSession.create(buf,{executionProviders:['wasm'],graphOptimizationLevel:'all'});
+      document.getElementById('mdlStatus').textContent='模型就绪! 可直接上传图片识别';
+      document.getElementById('inferBtn').disabled=false;
+    }
+  }catch(e){/* no demo model */}
+})();
 </script>
 </body>
 </html>
