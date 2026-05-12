@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图像分类推理平台</title>
+<style>
+  :root {
+    --bg: #f8fafc; --card: #fff; --text: #1e293b; --text2: #64748b;
+    --accent: #2563eb; --accent2: #3b82f6; --border: #e2e8f0;
+    --success: #16a34a; --warn: #d97706; --radius: 12px;
+  }
+  .dark {
+    --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --text2: #94a3b8;
+    --border: #334155;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.7; min-height: 100vh;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 40px 20px; }
+
+  h1 { font-size: 2rem; text-align: center; margin-bottom: 8px; }
+  .subtitle { text-align: center; color: var(--text2); margin-bottom: 40px; font-size: .95rem; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 24px;
+  }
+  .card h2 { font-size: 1.15rem; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block; font-size: .85rem; font-weight: 600; margin-bottom: 6px; color: var(--text2);
+  }
+  .form-group select, .form-group input[type="file"] {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: .9rem; background: var(--bg); color: var(--text);
+    cursor: pointer;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 28px; border: none; border-radius: 8px;
+    font-size: 1rem; font-weight: 600; cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; justify-content: center; }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+  #imagePreview {
+    width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px;
+    border: 2px dashed var(--border); margin-top: 8px; display: none;
+  }
+  #imagePreview.show { display: block; }
+
+  .camera-btn {
+    width: 100%; padding: 10px; border: 2px dashed var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--text2); font-size: .9rem; cursor: pointer;
+    text-align: center; margin-top: 8px; transition: all .2s;
+  }
+  .camera-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Camera modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.8);
+    z-index: 100; justify-content: center; align-items: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-box {
+    background: var(--card); border-radius: var(--radius); padding: 24px;
+    max-width: 640px; width: 95%; text-align: center;
+  }
+  .modal-box video { width: 100%; border-radius: 8px; margin-bottom: 16px; }
+  .modal-box canvas { display: none; }
+  .modal-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .modal-actions .btn { width: auto; }
+  .btn-secondary { background: var(--border); color: var(--text); }
+  .btn-danger { background: #ef4444; color: #fff; }
+
+  /* Results */
+  #result {
+    grid-column: 1 / -1;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 24px; display: none;
+  }
+  #result.show { display: block; }
+  .result-item { margin-bottom: 16px; }
+  .result-label { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+  .result-bar-wrap {
+    height: 32px; background: var(--bg); border-radius: 6px; overflow: hidden;
+    position: relative;
+  }
+  .result-bar {
+    height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 6px; transition: width .5s ease;
+    display: flex; align-items: center; padding-left: 12px;
+    color: #fff; font-weight: 600; font-size: .85rem;
+  }
+  .result-note { font-size: .85rem; color: var(--text2); margin-top: 12px; padding: 12px;
+    background: var(--bg); border-radius: 6px; }
+
+  .spinner {
+    display: none; width: 24px; height: 24px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite;
+  }
+  .spinner.active { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status { text-align: center; color: var(--text2); font-size: .85rem; min-height: 24px; margin-top: 8px; }
+
+  footer { text-align: center; padding: 24px; color: var(--text2); font-size: .8rem; }
+  footer a { color: var(--accent); }
+  .theme-btn {
+    position: fixed; top: 16px; right: 16px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px; cursor: pointer; color: var(--text); z-index: 10;
+  }
+
+  .info-box { font-size: .82rem; color: var(--text2); background: var(--bg); padding: 12px; border-radius: 6px; margin-top: 8px; }
+  .info-box code { background: var(--border); padding: 1px 6px; border-radius: 4px; font-size: .8rem; }
+</style>
+</head>
+<body>
+<button class="theme-btn" onclick="toggleTheme()" id="themeBtn">暗黑</button>
+
+<div class="container">
+  <h1>图像分类推理平台</h1>
+  <p class="subtitle">上传 ONNX 模型 + 图片 → Top-2 预测 · 支持摄像头拍照 · 浏览器本地推理</p>
+
+  <div class="grid">
+    <!-- Model config -->
+    <div class="card" id="modelCard">
+      <h2>模型配置</h2>
+      <div class="form-group">
+        <label>上传 ONNX 模型文件</label>
+        <input type="file" id="modelFile" accept=".onnx">
+      </div>
+      <div class="form-group">
+        <label>上传标签文件（可选，txt 每行一个标签。默认用占位标签）</label>
+        <input type="file" id="labelsFile" accept=".txt">
+      </div>
+      <div class="info-box">
+        <strong>没有 ONNX 模型？</strong><br>
+        用下方 Python 脚本把 <code>.pth</code> 转为 <code>.onnx</code> 格式
+      </div>
+      <button class="btn btn-primary" onclick="loadModel()" id="loadBtn">
+         加载模型
+      </button>
+      <div class="status" id="modelStatus"></div>
+    </div>
+
+    <!-- Image input -->
+    <div class="card">
+      <h2>图片输入</h2>
+      <div class="form-group">
+        <label>上传图片</label>
+        <input type="file" id="imageFile" accept="image/*">
+      </div>
+      <img id="imagePreview" alt="Preview">
+      <button class="camera-btn" onclick="openCamera()"> 打开摄像头拍照</button>
+      <button class="btn btn-primary" onclick="runInference()" id="inferBtn" disabled style="margin-top:16px">
+         开始推理
+      </button>
+      <div class="status" id="inferStatus"></div>
+    </div>
+
+    <!-- Results -->
+    <div id="result">
+      <h2>预测结果</h2>
+      <div id="resultContent"></div>
+    </div>
+  </div>
+
+  <!-- Converter Info -->
+  <div class="card" style="margin-top:24px">
+    <h2> .pth → ONNX 转换脚本</h2>
+    <p style="color:var(--text2);font-size:.9rem;margin-bottom:12px">
+      如果你的模型是 PyTorch <code>.pth</code> 格式，运行下面的 Python 脚本将其转为 ONNX 格式：
+    </p>
+    <pre style="background:var(--bg);padding:16px;border-radius:8px;overflow-x:auto;font-size:.8rem;line-height:1.6">
+python convert_to_onnx.py --arch resnet50 --num_classes 1000 --weights model.pth --output model.onnx</pre>
+    <p style="color:var(--text2);font-size:.82rem;margin-top:8px">
+      支持的架构: resnet18, resnet34, resnet50, resnet101, vgg16, vgg19, mobilenet_v2, mobilenet_v3_small, mobilenet_v3_large, efficientnet_b0, densenet121, alexnet, squeezenet1_0
+    </p>
+  </div>
+</div>
+
+<!-- Camera Modal -->
+<div class="modal-overlay" id="cameraModal">
+  <div class="modal-box">
+    <h2 style="margin-bottom:16px">拍照</h2>
+    <video id="cameraVideo" autoplay playsinline></video>
+    <canvas id="cameraCanvas"></canvas>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="capturePhoto()"> 拍照</button>
+      <button class="btn btn-danger" onclick="closeCamera()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>图像分类推理平台 · 使用 ONNX Runtime Web · 所有推理在浏览器本地完成</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
+<script>
+// ========== State ==========
+let session = null;
+let labels = [];
+let imageData = null;
+let cameraStream = null;
+
+// ========== Theme ==========
+function toggleTheme() {
+  document.documentElement.classList.toggle('dark');
+  const isDark = document.documentElement.classList.contains('dark');
+  document.getElementById('themeBtn').textContent = isDark ? '明亮' : '暗黑';
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+(function(){
+  if(localStorage.getItem('theme')==='dark' ||
+    (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme:dark)').matches)){
+    document.documentElement.classList.add('dark');
+    document.getElementById('themeBtn').textContent = '明亮';
+  }
+})();
+
+// ========== Image Preview ==========
+document.getElementById('imageFile').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const img = document.getElementById('imagePreview');
+    img.src = ev.target.result;
+    img.classList.add('show');
+    imageData = img;
+  };
+  reader.readAsDataURL(file);
+});
+
+// ========== Model Loading ==========
+async function loadModel() {
+  const modelFile = document.getElementById('modelFile').files[0];
+  const labelsFile = document.getElementById('labelsFile').files[0];
+
+  if (!modelFile) {
+    document.getElementById('modelStatus').textContent = '请先选择 ONNX 模型文件';
+    return;
+  }
+
+  const status = document.getElementById('modelStatus');
+  const btn = document.getElementById('loadBtn');
+  status.textContent = '加载中...';
+  btn.disabled = true;
+
+  try {
+    const modelBuffer = await modelFile.arrayBuffer();
+    const opts = {
+      executionProviders: ['wasm'],
+      graphOptimizationLevel: 'all',
+    };
+    session = await ort.InferenceSession.create(modelBuffer, opts);
+    status.textContent = '模型加载成功! 输入: [' +
+      session.inputNames.join(', ') + ']';
+    document.getElementById('inferBtn').disabled = false;
+  } catch(e) {
+    status.textContent = '加载失败: ' + e.message;
+  }
+  btn.disabled = false;
+
+  // Load labels
+  if (labelsFile) {
+    const text = await labelsFile.text();
+    labels = text.split(/[\r\n]+/).filter(l => l.trim());
+  } else {
+    labels = [];
+  }
+}
+
+// ========== Inference ==========
+async function runInference() {
+  if (!session) { alert('请先加载模型'); return; }
+  if (!imageData) { alert('请先上传图片或拍照'); return; }
+
+  const status = document.getElementById('inferStatus');
+  const btn = document.getElementById('inferBtn');
+  const resultDiv = document.getElementById('result');
+  status.textContent = '推理中...';
+  btn.disabled = true;
+
+  try {
+    // Preprocess: resize to 224x224, normalize with ImageNet stats
+    const inputTensor = await preprocessImage(imageData);
+
+    // Run
+    const inputName = session.inputNames[0];
+    const feeds = { [inputName]: inputTensor };
+    const results = await session.run(feeds);
+    const outputName = session.outputNames[0];
+    const output = results[outputName].data;
+
+    // Softmax
+    const probs = softmax(Array.from(output));
+
+    // Top-2
+    const indexed = probs.map((p,i) => ({idx:i, prob:p}));
+    indexed.sort((a,b) => b.prob - a.prob);
+    const top2 = indexed.slice(0, 2);
+
+    renderResults(top2);
+    resultDiv.classList.add('show');
+    status.textContent = '';
+  } catch(e) {
+    status.textContent = '推理失败: ' + e.message;
+    console.error(e);
+  }
+  btn.disabled = false;
+}
+
+async function preprocessImage(imgElement) {
+  // Draw to canvas for resizing
+  const canvas = document.createElement('canvas');
+  canvas.width = 224;
+  canvas.height = 224;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(imgElement, 0, 0, 224, 224);
+
+  const imageData = ctx.getImageData(0, 0, 224, 224);
+  const { data } = imageData;
+
+  // RGB, HWC -> CHW, normalize
+  const mean = [0.485, 0.456, 0.406];
+  const std = [0.229, 0.224, 0.225];
+  const tensorData = new Float32Array(3 * 224 * 224);
+
+  for (let c = 0; c < 3; c++) {
+    for (let h = 0; h < 224; h++) {
+      for (let w = 0; w < 224; w++) {
+        const idx = (h * 224 + w) * 4 + c;
+        const pixel = data[idx] / 255.0;
+        tensorData[c * 224 * 224 + h * 224 + w] = (pixel - mean[c]) / std[c];
+      }
+    }
+  }
+
+  return new ort.Tensor('float32', tensorData, [1, 3, 224, 224]);
+}
+
+function softmax(arr) {
+  const max = Math.max(...arr);
+  const exps = arr.map(x => Math.exp(x - max));
+  const sum = exps.reduce((a,b) => a + b, 0);
+  return exps.map(x => x / sum);
+}
+
+function renderResults(top2) {
+  const container = document.getElementById('resultContent');
+  const medals = ['', ''];
+  const colors = ['#2563eb', '#7c3aed'];
+
+  let html = '';
+  top2.forEach((item, i) => {
+    const pct = (item.prob * 100);
+    const label = labels[item.idx] || `Class_${item.idx}`;
+    html += `
+      <div class="result-item">
+        <div class="result-label">${medals[i]} ${i+1}. ${label} (Class #${item.idx})</div>
+        <div class="result-bar-wrap">
+          <div class="result-bar" style="width:${Math.max(pct, 1)}%;background:${colors[i]}">
+            ${pct.toFixed(2)}%
+          </div>
+        </div>
+      </div>`;
+  });
+
+  const diff = Math.abs(top2[0].prob - top2[1].prob) * 100;
+  let note = '';
+  if (diff < 5) {
+    note = `Top-2 概率仅差 ${diff.toFixed(2)}%，结果不确定度较高`;
+  } else {
+    note = `Top-2 概率差 ${diff.toFixed(2)}%，第一名可信度较高`;
+  }
+  html += `<div class="result-note">${note}</div>`;
+  container.innerHTML = html;
+}
+
+// ========== Camera ==========
+async function openCamera() {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480, facingMode: 'environment' }
+    });
+    const video = document.getElementById('cameraVideo');
+    video.srcObject = cameraStream;
+    document.getElementById('cameraModal').classList.add('active');
+  } catch(e) {
+    alert('无法打开摄像头: ' + e.message);
+  }
+}
+
+function closeCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  document.getElementById('cameraModal').classList.remove('active');
+}
+
+function capturePhoto() {
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  const dataUrl = canvas.toDataURL('image/jpeg');
+  const img = document.getElementById('imagePreview');
+  img.src = dataUrl;
+  img.classList.add('show');
+  imageData = img;
+
+  closeCamera();
+}
+</script>
+</body>
+</html>
