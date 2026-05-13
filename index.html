@@ -29,6 +29,8 @@
   .btn-primary:hover{opacity:.9;transform:translateY(-1px)}
   .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
   .btn-sm{padding:8px 18px;font-size:.85rem;width:auto;margin-top:8px}
+  .btn-outline{width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text2);font-size:.85rem;cursor:pointer;margin-top:6px}
+  .btn-outline:hover{border-color:var(--accent)}
 
   #preview{width:100%;max-height:280px;object-fit:contain;border-radius:8px;border:2px dashed var(--border);margin-top:8px;display:none}
   #preview.show{display:block}
@@ -45,6 +47,16 @@
   .r-note{font-size:.85rem;color:var(--text2);margin-top:14px;padding:12px;background:var(--bg);border-radius:8px}
 
   .status{text-align:center;font-size:.82rem;color:var(--text2);min-height:22px;margin-top:8px}
+
+  /* Progress bar */
+  .progress-wrap{display:none;margin-top:10px;text-align:center}
+  .progress-wrap.on{display:block}
+  .progress-bar{height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin-bottom:4px}
+  .progress-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .3s;width:0%}
+  .progress-text{font-size:.78rem;color:var(--text2)}
+
+  .cache-badge{display:inline-block;background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:10px;font-size:.72rem;margin-left:6px}
+  .dark .cache-badge{background:#1e3a5f;color:#93c5fd}
 
   footer{text-align:center;padding:24px;color:var(--text2);font-size:.78rem;border-top:1px solid var(--border);margin-top:40px}
   .theme-btn{position:fixed;top:12px;right:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;color:var(--text);z-index:10;font-size:.82rem}
@@ -70,15 +82,20 @@
 
   <div class="grid">
     <div class="card">
-      <h2>模型加载</h2>
+      <h2>模型加载 <span class="cache-badge" id="cacheBadge" style="display:none">已缓存</span></h2>
       <div class="form-g">
         <label>上传 ONNX 模型文件（.pth 需先用下方脚本转换）</label>
         <input type="file" id="modelFile" accept=".onnx">
       </div>
       <div class="info-box">
-        <span class="badge">38类</span> 已内置标签，自动匹配，无需手动上传标签文件
+        <span class="badge">38类</span> 已内置标签，自动匹配。<span id="cacheInfo"></span>
       </div>
-      <button class="btn btn-primary" onclick="loadModel()" id="loadBtn">加载模型</button>
+      <button class="btn btn-primary" onclick="loadModel()" id="loadBtn">加载预置模型</button>
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-text" id="progressText">0%</div>
+      </div>
+      <button class="btn-outline" onclick="clearCache()" id="clearCacheBtn" style="display:none">清除本地缓存</button>
       <div class="status" id="mdlStatus"></div>
     </div>
 
@@ -132,63 +149,176 @@ python convert_model.py --checkpoint checkpoints/best.pth --output model.onnx</p
 <script>
 // ========== 38类作物病害标签 ==========
 const LABELS_38 = [
-  "苹果-黑星病", "苹果-黑腐病", "苹果-锈病", "苹果-健康",
+  "苹果-黑星病","苹果-黑腐病","苹果-锈病","苹果-健康",
   "蓝莓-健康",
-  "樱桃-健康", "樱桃-白粉病",
-  "玉米-灰斑病", "玉米-锈病", "玉米-健康", "玉米-北叶枯病",
-  "葡萄-黑腐病", "葡萄-埃斯卡病", "葡萄-健康", "葡萄-叶枯病",
+  "樱桃-健康","樱桃-白粉病",
+  "玉米-灰斑病","玉米-锈病","玉米-健康","玉米-北叶枯病",
+  "葡萄-黑腐病","葡萄-埃斯卡病","葡萄-健康","葡萄-叶枯病",
   "柑橘-黄龙病",
-  "桃子-细菌性斑点病", "桃子-健康",
-  "甜椒-细菌性斑点病", "甜椒-健康",
-  "马铃薯-早疫病", "马铃薯-健康", "马铃薯-晚疫病",
-  "覆盆子-健康",
-  "大豆-健康",
-  "南瓜-白粉病",
-  "草莓-健康", "草莓-叶焦病",
-  "番茄-细菌性斑点病", "番茄-早疫病", "番茄-健康", "番茄-晚疫病",
-  "番茄-叶霉病", "番茄-斑枯病", "番茄-红蜘蛛", "番茄-靶斑病",
-  "番茄-花叶病毒", "番茄-黄化曲叶病毒"
+  "桃子-细菌性斑点病","桃子-健康",
+  "甜椒-细菌性斑点病","甜椒-健康",
+  "马铃薯-早疫病","马铃薯-健康","马铃薯-晚疫病",
+  "覆盆子-健康","大豆-健康","南瓜-白粉病",
+  "草莓-健康","草莓-叶焦病",
+  "番茄-细菌性斑点病","番茄-早疫病","番茄-健康","番茄-晚疫病",
+  "番茄-叶霉病","番茄-斑枯病","番茄-红蜘蛛","番茄-靶斑病",
+  "番茄-花叶病毒","番茄-黄化曲叶病毒"
 ];
 
-let session = null, imageEl = null;
-const labels38 = LABELS_38;
+// ========== IndexedDB 缓存 ==========
+const DB_NAME = 'plant-disease-model-cache';
+const STORE_NAME = 'models';
+const MODEL_KEY = 'densenet121-38c';
+const MODEL_URL = 'model.onnx';
 
-// Theme
-function toggleTheme(){
-  const d=document.documentElement.classList.toggle('dark');
-  document.getElementById('themeBtn').textContent=d?'明亮':'暗黑';
-  localStorage.setItem('theme',d?'dark':'light');
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore(STORE_NAME); };
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
 }
-(function(){
-  if(localStorage.getItem('theme')==='dark'||(!localStorage.getItem('theme')&&matchMedia('(prefers-color-scheme:dark)').matches)){
-    document.documentElement.classList.add('dark');document.getElementById('themeBtn').textContent='明亮';
+
+async function getCachedModel() {
+  try {
+    const db = await openDB();
+    return new Promise(resolve => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).get(MODEL_KEY);
+      req.onsuccess = () => { resolve(req.result); db.close(); };
+      req.onerror = () => { resolve(null); db.close(); };
+    });
+  } catch { return null; }
+}
+
+async function cacheModel(buffer) {
+  try {
+    const db = await openDB();
+    return new Promise(resolve => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).put({ id: MODEL_KEY, data: buffer, time: Date.now() }, MODEL_KEY);
+      tx.oncomplete = () => { resolve(); db.close(); };
+      tx.onerror = () => { resolve(); db.close(); };
+    });
+  } catch {}
+}
+
+async function clearCache() {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete(MODEL_KEY);
+    tx.oncomplete = () => {
+      document.getElementById('cacheBadge').style.display = 'none';
+      document.getElementById('clearCacheBtn').style.display = 'none';
+      document.getElementById('cacheInfo').textContent = '';
+      document.getElementById('mdlStatus').textContent = '缓存已清除，请重新加载模型';
+      session = null;
+      document.getElementById('inferBtn').disabled = true;
+      db.close();
+    };
+  } catch {}
+}
+
+async function loadModelFromBuffer(buf) {
+  const s = document.getElementById('mdlStatus');
+  s.textContent = '编译模型中...';
+  session = await ort.InferenceSession.create(buf, {
+    executionProviders: ['wasm'],
+    graphOptimizationLevel: 'all'
+  });
+  document.getElementById('inferBtn').disabled = false;
+  return session.inputNames;
+}
+
+// ========== 带进度的下载 ==========
+async function downloadWithProgress(url) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const total = Number(resp.headers.get('content-length')) || 23.7 * 1024 * 1024;
+  const reader = resp.body.getReader();
+  const chunks = [];
+  let loaded = 0;
+
+  const pw = document.getElementById('progressWrap');
+  const pf = document.getElementById('progressFill');
+  const pt = document.getElementById('progressText');
+  pw.classList.add('on');
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.byteLength;
+    const pct = Math.round((loaded / total) * 100);
+    pf.style.width = pct + '%';
+    pt.textContent = `${pct}% (${(loaded/1024/1024).toFixed(1)}/${(total/1024/1024).toFixed(1)} MB)`;
   }
-})();
 
-// Image preview
-document.getElementById('imgFile').addEventListener('change',function(e){
-  const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=function(ev){const img=document.getElementById('preview');img.src=ev.target.result;img.classList.add('show');imageEl=img};
-  r.readAsDataURL(f);
-});
-
-// Load ONNX model
-async function loadModel(){
-  const f=document.getElementById('modelFile').files[0];
-  if(!f){document.getElementById('mdlStatus').textContent='请选择 ONNX 模型文件';return}
-  const s=document.getElementById('mdlStatus'),b=document.getElementById('loadBtn');
-  s.textContent='加载中...';b.disabled=true;
-  try{
-    const buf=await f.arrayBuffer();
-    session=await ort.InferenceSession.create(buf,{executionProviders:['wasm'],graphOptimizationLevel:'all'});
-    s.textContent='模型加载成功! 输入: ['+session.inputNames.join(', ')+']';
-    document.getElementById('inferBtn').disabled=false;
-  }catch(e){s.textContent='加载失败: '+e.message}
-  b.disabled=false;
+  pw.classList.remove('on');
+  const buf = new Uint8Array(loaded);
+  let pos = 0;
+  for (const chunk of chunks) { buf.set(chunk, pos); pos += chunk.byteLength; }
+  return buf.buffer;
 }
 
-// Inference
+// ========== 模型加载 ==========
+let session = null, imageEl = null;
+
+async function loadModel() {
+  const fileInput = document.getElementById('modelFile').files[0];
+  const s = document.getElementById('mdlStatus'), b = document.getElementById('loadBtn');
+
+  // 1. 检查 IndexedDB 缓存
+  if (!fileInput) {
+    s.textContent = '检查本地缓存...';
+    const cached = await getCachedModel();
+    if (cached && cached.data) {
+      try {
+        await loadModelFromBuffer(cached.data);
+        const age = Math.round((Date.now() - cached.time) / 60000);
+        s.innerHTML = `模型已从本地缓存加载 (${age}分钟前下载)`;
+        document.getElementById('cacheBadge').style.display = 'inline-block';
+        document.getElementById('clearCacheBtn').style.display = 'block';
+        return;
+      } catch { /* cached model corrupted, re-download */ }
+    }
+  }
+
+  b.disabled = true;
+
+  try {
+    let buf;
+    if (fileInput) {
+      // 用户手动上传
+      s.textContent = '读取文件...';
+      buf = await fileInput.arrayBuffer();
+      s.textContent = '加载模型中...';
+      await loadModelFromBuffer(buf);
+      s.textContent = '模型加载成功 (手动上传)';
+    } else {
+      // 从服务器下载
+      s.textContent = '正在下载模型...';
+      s.innerHTML += '<br><small>首次下载约 24MB，请耐心等待...</small>';
+      buf = await downloadWithProgress(MODEL_URL);
+      s.textContent = '下载完成，编译模型中...';
+      await loadModelFromBuffer(buf);
+      s.textContent = '模型就绪! 可直接上传图片识别';
+      document.getElementById('cacheInfo').textContent = '已缓存到本地，下次秒开';
+      // 存到 IndexedDB
+      await cacheModel(buf);
+      document.getElementById('cacheBadge').style.display = 'inline-block';
+      document.getElementById('clearCacheBtn').style.display = 'block';
+    }
+  } catch(e) {
+    s.innerHTML = `加载失败: ${e.message}<br><small>请检查网络或手动上传 .onnx 文件</small>`;
+    document.getElementById('inferBtn').disabled = true;
+  }
+  b.disabled = false;
+}
+
+// ========== 推理 ==========
 async function runInfer(){
   if(!session){alert('请先加载模型');return}
   if(!imageEl){alert('请先上传图片或拍照');return}
@@ -201,8 +331,7 @@ async function runInfer(){
     const data=output[session.outputNames[0]].data;
     const probs=softmax(Array.from(data));
     const top2=probs.map((p,i)=>({idx:i,prob:p})).sort((a,b)=>b.prob-a.prob).slice(0,2);
-    renderRes(top2);
-    r.classList.add('show');s.textContent='';
+    renderRes(top2);r.classList.add('show');s.textContent='';
   }catch(e){s.textContent='识别失败: '+e.message;console.error(e)}
   b.disabled=false;
 }
@@ -223,20 +352,18 @@ async function preprocess(img){
 function softmax(a){const m=Math.max(...a);const e=a.map(x=>Math.exp(x-m));const s=e.reduce((x,y)=>x+y,0);return e.map(x=>x/s)}
 
 function getLabel(idx,count){
-  // 自动匹配标签：如果输出38类 -> 使用植物病害标签，否则显示类序号
-  if(count===38&&idx<38)return labels38[idx];
+  if(count===38&&idx<38)return LABELS_38[idx];
   return 'Class_'+idx;
 }
 
 function renderRes(top2){
-  const count=session?session._outputsInfo[session.outputNames[0]].dims[1]||session._outputs_info[session.outputNames[0]].dims[1]:38;
+  const count=session?_getOutputSize():38;
   let h='',clrs=['#16a34a','#ca8a04'];
   top2.forEach((item,i)=>{
     const pct=item.prob*100;
     const lbl=getLabel(item.idx,count);
-    const cls=i===0?'r-bar':'r-bar';
     h+=`<div class="r-item"><div class="r-label">${i+1}. ${lbl}</div>
-    <div class="r-bar-wrap"><div class="${cls}" style="width:${Math.max(pct,1)}%;background:${clrs[i]}">${pct.toFixed(2)}%</div></div></div>`;
+    <div class="r-bar-wrap"><div class="r-bar" style="width:${Math.max(pct,1)}%;background:${clrs[i]}">${pct.toFixed(2)}%</div></div></div>`;
   });
   const d=Math.abs(top2[0].prob-top2[1].prob)*100;
   const note=d<5?`两预测仅差 ${d.toFixed(2)}%，结果不确定度较高`:`两预测差 ${d.toFixed(2)}%，第一名可信度较高`;
@@ -244,7 +371,11 @@ function renderRes(top2){
   document.getElementById('resContent').innerHTML=h;
 }
 
-// Camera
+function _getOutputSize(){
+  try{return session._outputsInfo?.[session.outputNames[0]]?.dims[1]||session._outputs_info?.[session.outputNames[0]]?.dims[1]||38}catch{return 38}
+}
+
+// ========== Camera ==========
 let camStream=null;
 async function openCam(){
   try{
@@ -262,19 +393,41 @@ function snap(){
   closeCam();
 }
 
-// Auto load demo model if exists
+// Image preview
+document.getElementById('imgFile').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{const img=document.getElementById('preview');img.src=ev.target.result;img.classList.add('show');imageEl=img};
+  r.readAsDataURL(f);
+});
+
+// Theme
+function toggleTheme(){
+  const d=document.documentElement.classList.toggle('dark');
+  document.getElementById('themeBtn').textContent=d?'明亮':'暗黑';
+  localStorage.setItem('theme',d?'dark':'light');
+}
+(function(){
+  if(localStorage.getItem('theme')==='dark'||(!localStorage.getItem('theme')&&matchMedia('(prefers-color-scheme:dark)').matches)){
+    document.documentElement.classList.add('dark');document.getElementById('themeBtn').textContent='明亮';
+  }
+})();
+
+// Auto-load from cache on page open
 (async function(){
-  // Try loading a pre-converted ONNX model from the same directory
-  try{
-    const r=await fetch('model.onnx');
-    if(r.ok){
-      document.getElementById('mdlStatus').textContent='发现预置模型，加载中...';
-      const buf=await r.arrayBuffer();
-      session=await ort.InferenceSession.create(buf,{executionProviders:['wasm'],graphOptimizationLevel:'all'});
-      document.getElementById('mdlStatus').textContent='模型就绪! 可直接上传图片识别';
-      document.getElementById('inferBtn').disabled=false;
+  const cached = await getCachedModel();
+  if (cached && cached.data) {
+    document.getElementById('mdlStatus').textContent = '发现本地缓存，加载中...';
+    try {
+      await loadModelFromBuffer(cached.data);
+      const age = Math.round((Date.now() - cached.time) / 60000 / 60) || '<1';
+      document.getElementById('mdlStatus').textContent = '模型已就绪! (从本地缓存加载)';
+      document.getElementById('cacheBadge').style.display = 'inline-block';
+      document.getElementById('clearCacheBtn').style.display = 'block';
+    } catch {
+      document.getElementById('mdlStatus').textContent = '缓存失效，请点击"加载预置模型"';
     }
-  }catch(e){/* no demo model */}
+  }
 })();
 </script>
 </body>
